@@ -1,0 +1,8 @@
+# 打包輸出（屬建置產物，不納入版控）
+*.zip
+
+# 作業系統 / 編輯器雜項
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
