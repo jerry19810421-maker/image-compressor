@@ -41,7 +41,7 @@ const EXTENSION_BY_TYPE = {
  * 若要更換通行碼，請以新通行碼的 SHA-256 值取代此常數。
  */
 const PASSCODE_HASH =
-  "d16ee04328260d5afc6c9eda4fa980653e571dba45cbfe83025a4664f58267f5";
+  "9bf5d4f0a36784b51bdffaba42f514f8440c3888f3f80a6548b25fb87720c5ff";
 
 /** sessionStorage 解鎖旗標的鍵名（僅在當次分頁有效）。 */
 const GATE_KEY = "imgc_unlocked";
