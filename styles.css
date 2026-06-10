@@ -83,6 +83,65 @@ body {
   to { transform: translate3d(40px, -30px, 0) scale(1.1); }
 }
 
+/* ---------- 通行碼閘門 ---------- */
+.gate { display: none; }
+body.locked { overflow: hidden; }
+body.locked .gate {
+  display: grid; place-items: center;
+  position: fixed; inset: 0; z-index: 200; padding: 24px;
+}
+/* 鎖定時隱藏主介面，避免內容外洩或被 tab 聚焦 */
+body.locked .site-header,
+body.locked .layout,
+body.locked .site-footer { display: none; }
+
+.gate__card {
+  width: min(380px, 100%); text-align: center;
+  padding: 36px 28px; border-radius: var(--radius-lg);
+  background: var(--surface);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow-soft);
+  animation: rise 0.5s var(--ease) both;
+}
+.gate__icon {
+  display: inline-grid; place-items: center;
+  width: 60px; height: 60px; margin-bottom: 18px;
+  border-radius: 18px; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.gate__title {
+  font-size: 24px; font-weight: 700; letter-spacing: -0.02em;
+}
+.gate__subtitle {
+  margin-top: 8px; font-size: 14px; color: var(--text-soft);
+}
+.gate__form {
+  display: flex; flex-direction: column; gap: 12px; margin-top: 24px;
+}
+.gate__input {
+  width: 100%; padding: 13px 16px; text-align: center;
+  font-family: inherit; font-size: 16px; color: var(--text);
+  letter-spacing: 0.04em;
+  background: var(--surface-solid);
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  transition: border-color 0.2s var(--ease);
+}
+.gate__input:focus-visible { border-color: var(--accent); outline: none; }
+.gate__btn { width: 100%; padding: 13px; }
+.gate__error {
+  margin-top: 14px; font-size: 13px; font-weight: 500; color: #ff453a;
+  animation: shake 0.35s var(--ease);
+}
+.gate__error[hidden] { display: none; }
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
 /* ---------- Header ---------- */
 .site-header {
   display: flex; align-items: center; justify-content: space-between;

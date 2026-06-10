@@ -35,6 +35,17 @@ const EXTENSION_BY_TYPE = {
   "image/png": "png",
 };
 
+/**
+ * 通行碼的 SHA-256 雜湊（明碼不直接寫入程式）。
+ * 注意：前端通行碼僅能擋一般陌生人，無法達到高安全性。
+ * 若要更換通行碼，請以新通行碼的 SHA-256 值取代此常數。
+ */
+const PASSCODE_HASH =
+  "d16ee04328260d5afc6c9eda4fa980653e571dba45cbfe83025a4664f58267f5";
+
+/** sessionStorage 解鎖旗標的鍵名（僅在當次分頁有效）。 */
+const GATE_KEY = "imgc_unlocked";
+
 /** @type {Map<string, ImageItem>} 目前所有圖片項目，以 id 為鍵。 */
 const items = new Map();
 
@@ -849,4 +860,111 @@ function setMode(next) {
   recompressAll();
 }
 
+/* =========================================================
+   通行碼閘門
+   ========================================================= */
+
+/**
+ * 計算位元組陣列的 SHA-256（純 JavaScript 實作）。
+ *
+ * 不依賴 crypto.subtle，因此在 https、localhost 與本機
+ * file://（夥伴直接雙擊開啟）三種情況下都能運作。
+ *
+ * @param {Uint8Array} bytes 來源位元組
+ * @returns {string} 64 字元的十六進位雜湊字串
+ */
+function sha256Bytes(bytes) {
+  const K = [
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1,
+    0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+    0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786,
+    0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147,
+    0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b,
+    0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a,
+    0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+    0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ];
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  let h0 = 0x6a09e667, h1 = 0xbb67ae85, h2 = 0x3c6ef372, h3 = 0xa54ff53a;
+  let h4 = 0x510e527f, h5 = 0x9b05688c, h6 = 0x1f83d9ab, h7 = 0x5be0cd19;
+
+  const l = bytes.length;
+  const bitLen = l * 8;
+  const withOne = l + 1;
+  // 補零至 (長度 ≡ 56 mod 64)，再加 8 位元組長度欄位
+  const k = (56 - (withOne % 64) + 64) % 64;
+  const total = withOne + k + 8;
+  const m = new Uint8Array(total);
+  m.set(bytes);
+  m[l] = 0x80;
+  const dv = new DataView(m.buffer);
+  dv.setUint32(total - 8, Math.floor(bitLen / 0x100000000) >>> 0, false);
+  dv.setUint32(total - 4, bitLen >>> 0, false);
+
+  const w = new Uint32Array(64);
+  for (let i = 0; i < total; i += 64) {
+    for (let t = 0; t < 16; t++) w[t] = dv.getUint32(i + t * 4, false);
+    for (let t = 16; t < 64; t++) {
+      const s0 = rotr(w[t - 15], 7) ^ rotr(w[t - 15], 18) ^ (w[t - 15] >>> 3);
+      const s1 = rotr(w[t - 2], 17) ^ rotr(w[t - 2], 19) ^ (w[t - 2] >>> 10);
+      w[t] = (w[t - 16] + s0 + w[t - 7] + s1) | 0;
+    }
+    let a = h0, b = h1, c = h2, d = h3, e = h4, f = h5, g = h6, h = h7;
+    for (let t = 0; t < 64; t++) {
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[t] + w[t]) | 0;
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) | 0;
+      h = g; g = f; f = e; e = (d + t1) | 0;
+      d = c; c = b; b = a; a = (t1 + t2) | 0;
+    }
+    h0 = (h0 + a) | 0; h1 = (h1 + b) | 0; h2 = (h2 + c) | 0; h3 = (h3 + d) | 0;
+    h4 = (h4 + e) | 0; h5 = (h5 + f) | 0; h6 = (h6 + g) | 0; h7 = (h7 + h) | 0;
+  }
+  return [h0, h1, h2, h3, h4, h5, h6, h7]
+    .map((x) => (x >>> 0).toString(16).padStart(8, "0"))
+    .join("");
+}
+
+/**
+ * 解除鎖定，顯示主介面。
+ */
+function unlockApp() {
+  document.body.classList.remove("locked");
+  sessionStorage.setItem(GATE_KEY, "1");
+}
+
+/**
+ * 初始化通行碼閘門：已解鎖則直接放行，否則綁定驗證流程。
+ */
+function setupGate() {
+  // 當次分頁已驗證過就不再要求
+  if (sessionStorage.getItem(GATE_KEY) === "1") {
+    document.body.classList.remove("locked");
+    return;
+  }
+
+  const form = document.getElementById("gateForm");
+  const input = document.getElementById("gateInput");
+  const error = document.getElementById("gateError");
+  input.focus();
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const hash = sha256Bytes(new TextEncoder().encode(input.value));
+    if (hash === PASSCODE_HASH) {
+      unlockApp();
+    } else {
+      error.hidden = false;
+      input.select();
+    }
+  });
+}
+
+setupGate();
 bindEvents();
