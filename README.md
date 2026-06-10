@@ -40,7 +40,8 @@ python -m http.server 8123
 ├─ index.html
 ├─ styles.css
 ├─ app.js
-└─ README.md
+├─ README.md
+└─ HANDOFF.md   # 交接 / 維護說明
 ```
 
 - **直接傳檔**：把資料夾壓成 zip 給對方，對方解壓後雙擊 `index.html` 就能用。
@@ -51,6 +52,22 @@ python -m http.server 8123
 網站開啟時會要求輸入**通行碼**，正確後才能使用，並在當次瀏覽器分頁記住（不需每次重整都輸入）。通行碼請私下告知夥伴，不要寫在公開文件或截圖中。
 
 > 說明：這是**前端通行碼**，以 SHA-256 雜湊存放（明碼不寫在程式裡），用途是擋住一般陌生人與路過誤入者；它無法達到高安全性（懂技術者仍可繞過）。若需更換通行碼，請以新碼的 SHA-256 值替換 `app.js` 中的 `PASSCODE_HASH`。
+
+## 更新與重新部署
+
+之後若要修改網站（改功能、改通行碼、改文案等），在本機改完後依序執行：
+
+```bash
+git add .
+git commit -m "說明這次改了什麼"
+git push
+```
+
+推送後 **GitHub Pages 會自動重新部署**，約 **1～2 分鐘**生效。重新整理線上網址即可看到更新（若沒變，多半是瀏覽器快取，可用無痕視窗或強制重新整理）。
+
+線上網址：<https://jerry19810421-maker.github.io/image-compressor/>
+
+> 更換通行碼：把新通行碼算出 SHA-256，替換 `app.js` 中的 `PASSCODE_HASH`，再 `commit` + `push` 即可。
 
 ## 使用小提醒
 
